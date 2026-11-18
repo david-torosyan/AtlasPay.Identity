@@ -1,0 +1,6 @@
+<Solution>
+  <Project Path="AtlasPay.Identity.Api/AtlasPay.Identity.Api.csproj" />
+  <Project Path="AtlasPay.Identity.Application/AtlasPay.Identity.Application.csproj" />
+  <Project Path="AtlasPay.Identity.Domain/AtlasPay.Identity.Domain.csproj" />
+  <Project Path="AtlasPay.Identity.Infrastructure/AtlasPay.Identity.Infrastructure.csproj" />
+</Solution>
