@@ -10,4 +10,12 @@ public interface IRegistrationRepository
         CancellationToken ct);
 
     void Add(Registration registration);
+
+    Task<bool> TryStartProvisioningAsync(
+        Guid requestId,
+        CancellationToken ct);
+
+    Task<Registration> GetOrCreateAsync(
+        Registration registration,
+        CancellationToken ct);
 }

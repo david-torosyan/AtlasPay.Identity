@@ -10,6 +10,9 @@ public sealed class Registration
     public Guid Id { get; private set; }
     public Guid RequestId { get; private set; }
     public Guid CustomerId { get; private set; }
+    public string Email { get; private set; }
+    public string FirstName { get; private set; }
+    public string LastName { get; private set; }
 
     public RegistrationStatus Status { get; private set; }
 
@@ -18,22 +21,37 @@ public sealed class Registration
     public DateTime CreatedAt { get; private set; }
     public DateTime UpdatedAt { get; private set; }
 
-    public Registration(Guid requestId, Guid customerId)
+    public Registration(
+        Guid requestId,
+        Guid customerId,
+        string email,
+        string firstName,
+        string lastName)
     {
         if (requestId == Guid.Empty)
-            throw new ArgumentException(
-                "RequestId is required.");
+            throw new ArgumentException("RequestId is required.");
 
         if (customerId == Guid.Empty)
-            throw new ArgumentException(
-                "CustomerId is required.");
+            throw new ArgumentException("CustomerId is required.");
+
+        if (string.IsNullOrWhiteSpace(email))
+            throw new ArgumentException("Email is required.");
+
+        if (string.IsNullOrWhiteSpace(firstName))
+            throw new ArgumentException("FirstName is required.");
+
+        if (string.IsNullOrWhiteSpace(lastName))
+            throw new ArgumentException("LastName is required.");
 
         Id = Guid.NewGuid();
         RequestId = requestId;
         CustomerId = customerId;
 
-        Status = RegistrationStatus.Pending;
+        Email = email.Trim().ToLowerInvariant();
+        FirstName = firstName.Trim();
+        LastName = lastName.Trim();
 
+        Status = RegistrationStatus.Pending;
         CreatedAt = DateTime.UtcNow;
         UpdatedAt = CreatedAt;
     }

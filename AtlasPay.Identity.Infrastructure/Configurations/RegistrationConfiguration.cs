@@ -16,8 +16,20 @@ public sealed class RegistrationConfiguration
 
         builder.HasIndex(x => x.RequestId)
             .IsUnique();
-
+            
         builder.Property(x => x.CustomerId)
+            .IsRequired();
+
+        builder.Property(x => x.Email)
+            .HasMaxLength(320)
+            .IsRequired();
+
+        builder.Property(x => x.FirstName)
+            .HasMaxLength(100)
+            .IsRequired();
+
+        builder.Property(x => x.LastName)
+            .HasMaxLength(100)
             .IsRequired();
 
         builder.Property(x => x.Status)
