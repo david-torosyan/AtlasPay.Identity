@@ -98,6 +98,58 @@ public sealed class KeycloakIdentityProvider(
                 user.LastName);
     }
 
+    public async Task SetUserEnabledAsync(
+        string keycloakUserId,
+        bool enabled,
+        CancellationToken ct)
+    {
+        var accessToken = await GetAccessTokenAsync(ct);
+
+        var url = $"{_options.BaseUrl}/admin/realms/{_options.Realm}/users/{keycloakUserId}";
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, url);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        request.Content = JsonContent.Create(new
+        {
+            enabled
+        });
+
+        using var response = await httpClient.SendAsync(request, ct);
+
+        response.EnsureSuccessStatusCode();
+    }
+
+    public async Task SendAccountActivationAsync(
+        string keycloakUserId,
+        CancellationToken ct)
+    {
+        var accessToken = await GetAccessTokenAsync(ct);
+
+        var url =
+            $"{_options.BaseUrl}/admin/realms/{_options.Realm}" +
+            $"/users/{keycloakUserId}/execute-actions-email";
+
+        using var request = new HttpRequestMessage(
+            HttpMethod.Put, url);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        request.Content = JsonContent.Create(new[]
+        {
+            "VERIFY_EMAIL",
+            "UPDATE_PASSWORD"
+        });
+
+        using var response = await httpClient.SendAsync(request, ct);
+
+        response.EnsureSuccessStatusCode();
+    }
+
     private async Task<string> GetAccessTokenAsync(
         CancellationToken ct)
     {
@@ -125,5 +177,4 @@ public sealed class KeycloakIdentityProvider(
             ?? throw new InvalidOperationException(
                 "Keycloak did not return an access token.");
     }
-
 }

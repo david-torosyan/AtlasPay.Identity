@@ -15,4 +15,13 @@ public interface IIdentityProvider
     Task<IdentityUser?> GetUserByRegistrationRequestIdAsync(
         Guid requestId,
         CancellationToken ct);
+
+    Task SetUserEnabledAsync(
+        string keycloakUserId,
+        bool enabled,
+        CancellationToken ct);
+
+    Task SendAccountActivationAsync(
+        string keycloakUserId,
+        CancellationToken ct);
 }

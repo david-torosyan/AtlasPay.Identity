@@ -1,7 +1,7 @@
 ﻿
+using AtlasPay.Identity.Api.Authorization;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
 using Microsoft.IdentityModel.Tokens;
-using System.Text.Json;
 
 namespace AtlasPay.Identity.Api.Extensions;
 
@@ -47,34 +47,40 @@ public static class AuthenticationExtensions
                     "atlaspay-onboarding-service");
 
                 policy.RequireAssertion(context =>
-                {
-                    var resourceAccess = context.User
-                        .FindFirst("resource_access")?.Value;
+                    KeycloakRoleChecker.HasClientRole(
+                        context.User,
+                        "atlaspay-identity-api",
+                        "provision-users"));
+            });
 
-                    if (string.IsNullOrWhiteSpace(resourceAccess))
-                        return false;
+            options.AddPolicy("IdentityRead", policy =>
+            {
+                policy.RequireAuthenticatedUser();
 
-                    try
-                    {
-                        using var document =
-                            JsonDocument.Parse(resourceAccess);
+                policy.RequireClaim(
+                    "azp",
+                    "atlaspay-onboarding-service");
 
-                        return document.RootElement
-                            .GetProperty("atlaspay-identity-api")
-                            .GetProperty("roles")
-                            .EnumerateArray()
-                            .Any(role =>
-                                role.GetString() == "provision-users");
-                    }
-                    catch (JsonException)
-                    {
-                        return false;
-                    }
-                    catch (KeyNotFoundException)
-                    {
-                        return false;
-                    }
-                });
+                policy.RequireAssertion(context =>
+                    KeycloakRoleChecker.HasClientRole(
+                        context.User,
+                        "atlaspay-identity-api",
+                        "read-users"));
+            });
+
+            options.AddPolicy("IdentityUserManagement", policy =>
+            {
+                policy.RequireAuthenticatedUser();
+
+                policy.RequireClaim(
+                    "azp",
+                    "atlaspay-onboarding-service");
+
+                policy.RequireAssertion(context =>
+                    KeycloakRoleChecker.HasClientRole(
+                        context.User,
+                        "atlaspay-identity-api",
+                        "manage-users"));
             });
         });
 
