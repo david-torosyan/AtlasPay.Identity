@@ -1,4 +1,5 @@
 ﻿using AtlasPay.Identity.Application.Abstractions.Identity;
+using AtlasPay.Identity.Application.Models;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -41,7 +42,13 @@ public sealed class KeycloakIdentityProvider(
 
         using var response = await httpClient.SendAsync(request, ct);
 
-        response.EnsureSuccessStatusCode();
+        if (!response.IsSuccessStatusCode)
+        {
+            var error = await response.Content.ReadAsStringAsync(ct);
+
+            throw new InvalidOperationException(
+                $"Keycloak returned {(int)response.StatusCode}: {error}");
+        }
 
         var location = response.Headers.Location
             ?? throw new InvalidOperationException(
@@ -50,7 +57,7 @@ public sealed class KeycloakIdentityProvider(
         return location.Segments.Last().TrimEnd('/');
     }
 
-    public async Task<string?> GetUserByRegistrationRequestIdAsync(
+    public async Task<IdentityUser?> GetUserByRegistrationRequestIdAsync(
         Guid requestId,
         CancellationToken ct)
     {
@@ -75,11 +82,20 @@ public sealed class KeycloakIdentityProvider(
             .ReadFromJsonAsync<List<KeycloakUserResponse>>(
                 cancellationToken: ct);
 
-        return users?.SingleOrDefault(
+        var user = users?.SingleOrDefault(
             x => string.Equals(
                 x.Username,
                 username,
-                StringComparison.OrdinalIgnoreCase))?.Id;
+                StringComparison.OrdinalIgnoreCase));
+
+        return user is null
+            ? null
+            : new IdentityUser(
+                user.Id,
+                user.Username,
+                user.Email,
+                user.FirstName,
+                user.LastName);
     }
 
     private async Task<string> GetAccessTokenAsync(

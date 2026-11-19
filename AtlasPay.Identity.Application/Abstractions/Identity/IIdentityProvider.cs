@@ -1,4 +1,6 @@
 ﻿
+using AtlasPay.Identity.Application.Models;
+
 namespace AtlasPay.Identity.Application.Abstractions.Identity;
 
 public interface IIdentityProvider
@@ -10,7 +12,7 @@ public interface IIdentityProvider
         string lastName,
         CancellationToken ct);
 
-    Task<string?> GetUserByRegistrationRequestIdAsync(
+    Task<IdentityUser?> GetUserByRegistrationRequestIdAsync(
         Guid requestId,
         CancellationToken ct);
 }

@@ -82,21 +82,41 @@ public sealed class RegisterUserHandler(
         return user.Id;
     }
 
+
     private async Task<Guid> RecoverAsync(
         Registration registration,
         CancellationToken ct)
     {
-        var keycloakUserId = await identityProvider
+        var identityUser = await identityProvider
             .GetUserByRegistrationRequestIdAsync(
                 registration.RequestId, ct);
 
-        if (keycloakUserId is null)
+        if (identityUser is null)
             throw new InvalidOperationException(
                 "Registration outcome is unresolved.");
 
+        var expectedUsername =
+            $"atlaspay-reg-{registration.RequestId:N}";
+
+        if (!string.Equals(
+                identityUser.Username,
+                expectedUsername,
+                StringComparison.OrdinalIgnoreCase) ||
+            !string.Equals(
+                identityUser.Email,
+                registration.Email,
+                StringComparison.OrdinalIgnoreCase) ||
+            identityUser.FirstName != registration.FirstName ||
+            identityUser.LastName != registration.LastName ||
+            string.IsNullOrWhiteSpace(identityUser.Id))
+        {
+            throw new InvalidOperationException(
+                "Keycloak user does not match the original registration.");
+        }
+
         return await registrationRepository.CompleteAsync(
             registration,
-            keycloakUserId,
+            identityUser.Id,
             ct);
     }
 }
