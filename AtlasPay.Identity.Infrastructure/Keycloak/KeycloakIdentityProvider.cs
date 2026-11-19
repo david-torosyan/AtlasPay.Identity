@@ -150,6 +150,26 @@ public sealed class KeycloakIdentityProvider(
         response.EnsureSuccessStatusCode();
     }
 
+    public async Task RevokeUserSessionsAsync(
+    string keycloakUserId,
+    CancellationToken ct)
+    {
+        var accessToken = await GetAccessTokenAsync(ct);
+
+        var url =
+            $"{_options.BaseUrl}/admin/realms/{_options.Realm}" +
+            $"/users/{keycloakUserId}/logout";
+
+        using var request = new HttpRequestMessage(HttpMethod.Post, url);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.SendAsync(request, ct);
+
+        response.EnsureSuccessStatusCode();
+    }
+
     private async Task<string> GetAccessTokenAsync(
         CancellationToken ct)
     {

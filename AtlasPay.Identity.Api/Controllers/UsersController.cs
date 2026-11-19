@@ -1,12 +1,14 @@
 ﻿
 using AtlasPay.Identity.Api.Contracts.Users;
 using AtlasPay.Identity.Application.Features.Users.Commands;
+using AtlasPay.Identity.Application.Features.Users.Commands.RevokeUserSessions;
 using AtlasPay.Identity.Application.Features.Users.Commands.SendAccountActivation;
 using AtlasPay.Identity.Application.Features.Users.Commands.SetUserEnabled;
 using AtlasPay.Identity.Application.Features.Users.Queries.GetUserByCustomerId;
 using AtlasPay.Identity.Application.Features.Users.Queries.GetUserByKeycloakId;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace AtlasPay.Identity.Api.Controllers;
 
@@ -74,6 +76,7 @@ public sealed class UsersController : ControllerBase
 
     [Authorize(Policy = "IdentityUserManagement")]
     [HttpPost("by-customer/{customerId:guid}/activation-email")]
+    [EnableRateLimiting("ActivationEmail")]
     public async Task<IActionResult> SendActivationEmail(
         Guid customerId,
         [FromServices] SendAccountActivationHandler handler,
@@ -96,5 +99,18 @@ public sealed class UsersController : ControllerBase
             new GetUserByKeycloakIdQuery(keycloakUserId), ct);
 
         return user is null ? NotFound() : Ok(user);
+    }
+
+    [Authorize(Policy = "IdentityUserManagement")]
+    [HttpPost("by-customer/{customerId:guid}/revoke-sessions")]
+    public async Task<IActionResult> RevokeSessions(
+    Guid customerId,
+    [FromServices] RevokeUserSessionsHandler handler,
+    CancellationToken ct)
+    {
+        var found = await handler.HandleAsync(
+            new RevokeUserSessionsCommand(customerId), ct);
+
+        return found ? NoContent() : NotFound();
     }
 }

@@ -24,4 +24,8 @@ public interface IIdentityProvider
     Task SendAccountActivationAsync(
         string keycloakUserId,
         CancellationToken ct);
+
+    Task RevokeUserSessionsAsync(
+        string keycloakUserId,
+        CancellationToken ct);
 }

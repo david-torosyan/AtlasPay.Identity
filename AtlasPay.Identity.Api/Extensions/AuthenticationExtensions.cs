@@ -74,7 +74,7 @@ public static class AuthenticationExtensions
 
                 policy.RequireClaim(
                     "azp",
-                    "atlaspay-onboarding-service");
+                    "atlaspay-admin-service");
 
                 policy.RequireAssertion(context =>
                     KeycloakRoleChecker.HasClientRole(
