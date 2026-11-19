@@ -2,6 +2,7 @@
 using AtlasPay.Identity.Domain.Entities;
 using AtlasPay.Identity.Domain.Enums;
 using Microsoft.EntityFrameworkCore;
+using Npgsql;
 
 namespace AtlasPay.Identity.Infrastructure.Persistence.Repositories;
 
@@ -66,5 +67,56 @@ public sealed class RegistrationRepository(
 
         return await dbContext.Registrations
             .SingleAsync(x => x.RequestId == registration.RequestId, ct);
+    }
+
+    public async Task<Guid> CompleteAsync(
+        Registration registration,
+        string keycloakUserId,
+        CancellationToken ct)
+    {
+        var user = new User(
+            keycloakUserId,
+            registration.CustomerId);
+
+        dbContext.Users.Add(user);
+        registration.Complete(keycloakUserId);
+
+        try
+        {
+            await dbContext.SaveChangesAsync(ct);
+            return user.Id;
+        }
+        catch (DbUpdateException ex)
+            when (ex.InnerException is PostgresException
+            {
+                SqlState: PostgresErrorCodes.UniqueViolation
+            })
+        {
+            dbContext.ChangeTracker.Clear();
+
+            var existingRegistration = await dbContext.Registrations
+                .AsNoTracking()
+                .SingleAsync(
+                    x => x.RequestId == registration.RequestId,
+                    ct);
+
+            var existingUser = await dbContext.Users
+                .AsNoTracking()
+                .SingleOrDefaultAsync(
+                    x => x.KeycloakUserId == keycloakUserId &&
+                         x.CustomerId == registration.CustomerId,
+                    ct);
+
+            if (existingRegistration.Status == RegistrationStatus.Completed &&
+                existingRegistration.KeycloakUserId == keycloakUserId &&
+                existingUser is not null)
+            {
+                return existingUser.Id;
+            }
+
+            throw new InvalidOperationException(
+                "Registration conflicts with an existing user mapping.",
+                ex);
+        }
     }
 }

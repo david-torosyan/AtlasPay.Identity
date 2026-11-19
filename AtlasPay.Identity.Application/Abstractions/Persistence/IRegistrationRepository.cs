@@ -18,4 +18,9 @@ public interface IRegistrationRepository
     Task<Registration> GetOrCreateAsync(
         Registration registration,
         CancellationToken ct);
+
+    Task<Guid> CompleteAsync(
+        Registration registration,
+        string keycloakUserId,
+        CancellationToken ct);
 }

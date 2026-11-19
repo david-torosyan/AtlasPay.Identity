@@ -1,5 +1,4 @@
-﻿
-using AtlasPay.Identity.Application.Abstractions.Identity;
+﻿using AtlasPay.Identity.Application.Abstractions.Identity;
 using Microsoft.Extensions.Options;
 using System.Net.Http.Headers;
 using System.Net.Http.Json;
@@ -13,6 +12,7 @@ public sealed class KeycloakIdentityProvider(
     private readonly KeycloakOptions _options = options.Value;
 
     public async Task<string> CreateUserAsync(
+        Guid requestId,
         string email,
         string firstName,
         string lastName,
@@ -28,9 +28,11 @@ public sealed class KeycloakIdentityProvider(
         request.Headers.Authorization =
             new AuthenticationHeaderValue("Bearer", accessToken);
 
+        var username = $"atlaspay-reg-{requestId:N}";
+
         request.Content = JsonContent.Create(new
         {
-            username = email,
+            username,
             email,
             firstName,
             lastName,
@@ -48,6 +50,37 @@ public sealed class KeycloakIdentityProvider(
         return location.Segments.Last().TrimEnd('/');
     }
 
+    public async Task<string?> GetUserByRegistrationRequestIdAsync(
+        Guid requestId,
+        CancellationToken ct)
+    {
+        var accessToken = await GetAccessTokenAsync(ct);
+
+        var username = $"atlaspay-reg-{requestId:N}";
+
+        var url =
+            $"{_options.BaseUrl}/admin/realms/{_options.Realm}/users" +
+            $"?username={Uri.EscapeDataString(username)}&exact=true";
+
+        using var request = new HttpRequestMessage(HttpMethod.Get, url);
+
+        request.Headers.Authorization =
+            new AuthenticationHeaderValue("Bearer", accessToken);
+
+        using var response = await httpClient.SendAsync(request, ct);
+
+        response.EnsureSuccessStatusCode();
+
+        var users = await response.Content
+            .ReadFromJsonAsync<List<KeycloakUserResponse>>(
+                cancellationToken: ct);
+
+        return users?.SingleOrDefault(
+            x => string.Equals(
+                x.Username,
+                username,
+                StringComparison.OrdinalIgnoreCase))?.Id;
+    }
 
     private async Task<string> GetAccessTokenAsync(
         CancellationToken ct)
