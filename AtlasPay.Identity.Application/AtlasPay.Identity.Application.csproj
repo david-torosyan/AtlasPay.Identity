@@ -10,4 +10,8 @@
     <ProjectReference Include="..\AtlasPay.Identity.Domain\AtlasPay.Identity.Domain.csproj" />
   </ItemGroup>
 
+  <ItemGroup>
+    <PackageReference Include="AtlasPay.Contracts" Version="1.2.2" />
+  </ItemGroup>
+
 </Project>

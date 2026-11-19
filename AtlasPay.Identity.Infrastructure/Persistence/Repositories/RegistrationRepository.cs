@@ -119,4 +119,22 @@ public sealed class RegistrationRepository(
                 ex);
         }
     }
+
+    public async Task<Registration> LockByRequestIdAsync(
+        Guid requestId,
+        CancellationToken ct)
+    {
+        var registration = await dbContext.Registrations
+            .FromSqlInterpolated($"""
+                SELECT *
+                FROM "Registrations"
+                WHERE "RequestId" = {requestId}
+                FOR UPDATE
+                """)
+            .SingleAsync(ct);
+
+        await dbContext.Entry(registration).ReloadAsync(ct);
+
+        return registration;
+    }
 }

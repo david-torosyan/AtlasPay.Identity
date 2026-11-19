@@ -23,4 +23,8 @@ public interface IRegistrationRepository
         Registration registration,
         string keycloakUserId,
         CancellationToken ct);
+
+    Task<Registration> LockByRequestIdAsync(
+        Guid requestId,
+        CancellationToken ct);
 }

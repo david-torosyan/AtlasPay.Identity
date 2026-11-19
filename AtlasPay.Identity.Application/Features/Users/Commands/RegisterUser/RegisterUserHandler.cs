@@ -1,8 +1,10 @@
-﻿
+﻿using AtlasPay.Contracts.Events.Identity;
+using AtlasPay.Contracts.Events.Identity.V1;
 using AtlasPay.Identity.Application.Abstractions.Identity;
 using AtlasPay.Identity.Application.Abstractions.Persistence;
 using AtlasPay.Identity.Domain.Entities;
 using AtlasPay.Identity.Domain.Enums;
+using System.Text.Json;
 
 namespace AtlasPay.Identity.Application.Features.Users.Commands;
 
@@ -10,6 +12,7 @@ public sealed class RegisterUserHandler(
     IIdentityProvider identityProvider,
     IUserRepository userRepository,
     IRegistrationRepository registrationRepository,
+    IOutboxRepository outboxRepository,
     IUnitOfWork unitOfWork)
 {
     public async Task<Guid> HandleAsync(
@@ -60,8 +63,6 @@ public sealed class RegisterUserHandler(
             throw new InvalidOperationException(
                 "Registration is already being processed.");
 
-        registration.StartProvisioning();
-
         var keycloakUserId = await identityProvider.CreateUserAsync(
             registration.RequestId,
             registration.Email,
@@ -69,19 +70,11 @@ public sealed class RegisterUserHandler(
             registration.LastName,
             ct);
 
-        var user = new User(
+        return await CompleteRegistrationAsync(
+            registration.RequestId,
             keycloakUserId,
-            registration.CustomerId);
-
-        userRepository.Add(user);
-
-        registration.Complete(keycloakUserId);
-
-        await unitOfWork.SaveChangesAsync(ct);
-
-        return user.Id;
+            ct);
     }
-
 
     private async Task<Guid> RecoverAsync(
         Registration registration,
@@ -114,9 +107,76 @@ public sealed class RegisterUserHandler(
                 "Keycloak user does not match the original registration.");
         }
 
-        return await registrationRepository.CompleteAsync(
-            registration,
+        return await CompleteRegistrationAsync(
+            registration.RequestId,
             identityUser.Id,
             ct);
+    }
+
+    private async Task<Guid> CompleteRegistrationAsync(
+        Guid requestId,
+        string keycloakUserId,
+        CancellationToken ct)
+    {
+        Guid userId = Guid.Empty;
+
+        await unitOfWork.ExecuteInTransactionAsync(
+            async token =>
+            {
+                var registration = await registrationRepository
+                    .LockByRequestIdAsync(requestId, token);
+
+                if (registration.Status == RegistrationStatus.Completed)
+                {
+                    if (registration.KeycloakUserId != keycloakUserId)
+                        throw new InvalidOperationException(
+                            "Registration has a different Keycloak user.");
+
+                    var existingUser = await userRepository
+                        .GetByKeycloakUserIdAsync(
+                            keycloakUserId, token);
+
+                    userId = existingUser?.Id
+                        ?? throw new InvalidOperationException(
+                            "Completed registration has no user mapping.");
+
+                    return;
+                }
+
+                if (registration.Status != RegistrationStatus.Provisioning)
+                    throw new InvalidOperationException(
+                        "Registration is not ready for completion.");
+
+                var user = new User(
+                    keycloakUserId,
+                    registration.CustomerId);
+
+                userRepository.Add(user);
+
+                registration.Complete(keycloakUserId);
+
+                var eventId = Guid.NewGuid();
+
+                var integrationEvent = new IdentityUserRegisteredV1(
+                    eventId,
+                    user.Id,
+                    user.CustomerId,
+                    registration.Email,
+                    DateTime.UtcNow);
+
+                var outboxMessage = new OutboxMessage(
+                    IdentitiyEventTypes.IdentityUserRegisteredV1,
+                    JsonSerializer.Serialize(
+                        integrationEvent,
+                        new JsonSerializerOptions(
+                            JsonSerializerDefaults.Web)));
+
+                outboxRepository.Add(outboxMessage);
+
+                userId = user.Id;
+            },
+            ct);
+
+        return userId;
     }
 }
