@@ -65,6 +65,7 @@ public sealed class RegisterUserHandler(
 
         var keycloakUserId = await identityProvider.CreateUserAsync(
             registration.RequestId,
+            registration.CustomerId,
             registration.Email,
             registration.FirstName,
             registration.LastName,
@@ -101,6 +102,7 @@ public sealed class RegisterUserHandler(
                 StringComparison.OrdinalIgnoreCase) ||
             identityUser.FirstName != registration.FirstName ||
             identityUser.LastName != registration.LastName ||
+            identityUser.CustomerId != registration.CustomerId ||
             string.IsNullOrWhiteSpace(identityUser.Id))
         {
             throw new InvalidOperationException(

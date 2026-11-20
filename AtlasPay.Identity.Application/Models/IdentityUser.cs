@@ -6,4 +6,5 @@ public sealed record IdentityUser(
     string Username,
     string Email,
     string FirstName,
-    string LastName);
+    string LastName,
+    Guid? CustomerId);

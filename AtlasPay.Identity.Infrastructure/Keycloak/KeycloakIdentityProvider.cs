@@ -14,6 +14,7 @@ public sealed class KeycloakIdentityProvider(
 
     public async Task<string> CreateUserAsync(
         Guid requestId,
+        Guid customerId,
         string email,
         string firstName,
         string lastName,
@@ -37,7 +38,11 @@ public sealed class KeycloakIdentityProvider(
             email,
             firstName,
             lastName,
-            enabled = true
+            enabled = true,
+            attributes = new Dictionary<string, string[]>
+            {
+                ["customer_id"] = [customerId.ToString("D")]
+            }
         });
 
         using var response = await httpClient.SendAsync(request, ct);
@@ -58,8 +63,8 @@ public sealed class KeycloakIdentityProvider(
     }
 
     public async Task<IdentityUser?> GetUserByRegistrationRequestIdAsync(
-        Guid requestId,
-        CancellationToken ct)
+    Guid requestId,
+    CancellationToken ct)
     {
         var accessToken = await GetAccessTokenAsync(ct);
 
@@ -88,14 +93,26 @@ public sealed class KeycloakIdentityProvider(
                 username,
                 StringComparison.OrdinalIgnoreCase));
 
-        return user is null
-            ? null
-            : new IdentityUser(
-                user.Id,
-                user.Username,
-                user.Email,
-                user.FirstName,
-                user.LastName);
+        if (user is null)
+            return null;
+
+        Guid? customerId = null;
+
+        if (user.Attributes?.TryGetValue(
+                "customer_id", out var values) == true &&
+            values.Length == 1 &&
+            Guid.TryParse(values[0], out var parsedCustomerId))
+        {
+            customerId = parsedCustomerId;
+        }
+
+        return new IdentityUser(
+            user.Id,
+            user.Username,
+            user.Email,
+            user.FirstName,
+            user.LastName,
+            customerId);
     }
 
     public async Task SetUserEnabledAsync(

@@ -7,6 +7,7 @@ public interface IIdentityProvider
 {
     Task<string> CreateUserAsync(
         Guid requestId,
+        Guid customerId,
         string email,
         string firstName,
         string lastName,
