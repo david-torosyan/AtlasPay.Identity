@@ -74,7 +74,7 @@ public sealed class UsersController : ControllerBase
         return found ? NoContent() : NotFound();
     }
 
-    [Authorize(Policy = "IdentityUserManagement")]
+    [Authorize(Policy = "IdentityProvisioning")]
     [HttpPost("by-customer/{customerId:guid}/activation-email")]
     [EnableRateLimiting("ActivationEmail")]
     public async Task<IActionResult> SendActivationEmail(
