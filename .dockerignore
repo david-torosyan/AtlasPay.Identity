@@ -1,0 +1,12 @@
+**/bin/
+**/obj/
+**/.vs/
+**/.idea/
+.git/
+.gitignore
+.gitattributes
+**/*.user
+**/*.suo
+**/TestResults/
+**/.env
+**/appsettings.Development.json

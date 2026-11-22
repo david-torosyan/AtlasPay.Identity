@@ -1,7 +1,6 @@
 ﻿
 using AtlasPay.Identity.Api.Authorization;
-using Microsoft.AspNetCore.Authentication.JwtBearer;
-using Microsoft.IdentityModel.Tokens;
+using AtlasPay.Security.Authentication;
 
 namespace AtlasPay.Identity.Api.Extensions;
 
@@ -11,30 +10,7 @@ public static class AuthenticationExtensions
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        services.AddAuthentication(
-            JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
-            {
-                options.Authority =
-                    configuration["Keycloak:BaseUrl"]!
-                    + "/realms/"
-                    + configuration["Keycloak:Realm"];
-
-                options.Audience = "atlaspay-identity-api";
-
-                options.RequireHttpsMetadata = false; // as we use http for local development
-
-                options.MapInboundClaims = false;
-
-                options.TokenValidationParameters =
-                    new TokenValidationParameters
-                    {
-                        ValidateIssuer = true,
-                        ValidateAudience = true,
-                        ValidateLifetime = true,
-                        ValidateIssuerSigningKey = true
-                    };
-            });
+        services.AddAtlasPayJwtAuthentication(configuration);
 
         services.AddAuthorization(options =>
         {
